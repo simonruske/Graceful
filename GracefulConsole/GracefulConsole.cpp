@@ -1,30 +1,10 @@
 #include <stdlib.h>
 #include <windows.h>
 #include "../Graceful/Graceful.h"
+#include "../Graceful/Reader.h"
 #include "mpi.h"
 #include "stdio.h"
 #include <time.h>
-
-#pragma region ProblemInitialisation
-int* InitialiseArcs(int numberOfProblems, int numberOfNodes)
-{
-	int* arcs = new int[numberOfProblems * (numberOfNodes - 1)]
-	{
-		0,	1,	2,	0,	4,	5,
-		0,	1,	2,	0,	4,	4,
-		0,	1,	2,	0,	4,	0,
-		0,	1,	1,	1,	0,	5,
-		0,	1,	1,	0,	4,	4,
-		0,	1,	1,	0,	4,	0,
-		0,	1,	1,	0,	0,	0,
-		0,	1,	0,	3,	0,	5,
-		0,	1,	0,	3,	0,	0,
-		0,	1,	0,	0,	0,	0,
-		0,	0,	0,	0,	0,	0
-	};
-	return arcs;
-}
-#pragma endregion
 
 #pragma region LeaderMethods
 void LeaderSendProblem(int* arcs, int firstIndex, int secondIndex, int numberOfNodes, int* currentTask, int destination)
@@ -96,8 +76,8 @@ void ExecuteLeaderTasks(int worldSize)
 		return;
 	}
 
-
-	int* arcs = InitialiseArcs(numberOfProblems, numberOfNodes);
+	char filename[100] = "..\\TestFiles\\trees_7.csv";
+	int* arcs = ReadProblems(filename, 7);
 
 	int pendingTasks = 0;
 	int sentTasks = 0;
