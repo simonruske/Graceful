@@ -149,10 +149,9 @@ void LeaderSendOutTerminationRequest(int worldSize)
 	}
 }
 
-void ExecuteLeaderTasks(int worldSize)
+void ExecuteLeaderTasks(int worldSize, int numberOfNodes, char* filename)
 {
-	int numberOfNodes = 7;
-	int numberOfProblems = 11;
+	int numberOfProblems = ReadNumberOfProblems(filename);
 
 	if (numberOfProblems < worldSize)
 	{
@@ -161,8 +160,7 @@ void ExecuteLeaderTasks(int worldSize)
 		return;
 	}
 
-	char filename[100] = "..\\TestFiles\\trees_7.csv";
-	int* arcs = ReadProblems(filename, 7);
+	int* arcs = ReadProblems(filename, numberOfNodes, numberOfProblems);
 
 	int pendingTasks = 0;
 	int currentTask = 0;
@@ -198,10 +196,8 @@ bool TerminationCodeHasBeenRecieved()
 	return terminate;
 }
 
-void ExecuteHelperTasks(int rank)
-{
-	int numberOfNodes = 7;
-	
+void ExecuteHelperTasks(int rank, int numberOfNodes)
+{	
 	int currentTask;
 	int* currentArcs = new int[numberOfNodes];
 	int firstIndex;
@@ -225,6 +221,14 @@ void ExecuteHelperTasks(int rank)
 
 int main(int argc, char* argv[])
 {
+	if (argc != 3)
+	{
+		printf("You must include the number of nodes followed by the name of the file to read the trees from\n");
+		return 0;
+	}
+
+	int numberOfNodes = atoi(argv[1]);
+
 	MPI_Init(&argc, &argv);
 
 	int rank;
@@ -234,12 +238,12 @@ int main(int argc, char* argv[])
 
 	if(rank == 0)
 	{
-		ExecuteLeaderTasks(worldSize);
+		ExecuteLeaderTasks(worldSize, numberOfNodes, argv[2]);
 	}
 
 	else
 	{
-		ExecuteHelperTasks(rank);
+		ExecuteHelperTasks(rank, numberOfNodes);
 	}
 
 	MPI_Finalize();

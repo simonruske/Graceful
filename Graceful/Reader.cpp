@@ -25,10 +25,8 @@ int ReadNumberOfProblems(char* filename)
 
 	return numberOfProblems;
 }
-int* ReadProblems(char* filename, int numberOfNodes)
+int* ReadProblems(char* filename, int numberOfNodes, int numberOfProblems)
 {
-	int numberOfProblems = ReadNumberOfProblems(filename);
-
 	int* result = new int[numberOfProblems * (numberOfNodes - 1)];
 
 	std::string line;

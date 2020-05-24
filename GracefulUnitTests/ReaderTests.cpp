@@ -21,14 +21,14 @@ namespace GracefulUnitTests
 
 		TEST_METHOD(ReaderTest_ReadNumberOfProblem_FileDoesNotExist_ThrowsException)
 		{
-			auto func = [] { ReadNumberOfProblems("..\Test Files\\nonExistintantFile.csv"); };
+			auto func = [] { ReadNumberOfProblems("..\\Test Files\\nonExistintantFile.csv"); };
 			Assert::ExpectException<std::exception> (func);
 		}
 
 		TEST_METHOD(ReaderTest_ReadProblems_TestFile_ReturnsCorrectResult)
 		{
 			//Act
-			int* actualResult = ReadProblems("..\\TestFiles\\trees_7.csv", 7);
+			int* actualResult = ReadProblems("..\\TestFiles\\trees_7.csv", 7, 11);
 
 			//Assert
 			int* expectedResult = new int[66]
