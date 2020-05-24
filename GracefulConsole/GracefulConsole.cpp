@@ -6,6 +6,18 @@
 #include "stdio.h"
 #include <time.h>
 
+#pragma region Initialise
+bool* InitialiseIsSolvedStatus(int numberOfProblems)
+{
+	bool* isSolved = new bool[numberOfProblems];
+	for (int i = 0; i < numberOfProblems; i++)
+	{
+		isSolved[i] = false;
+	}
+	return isSolved;
+}
+#pragma endregion
+
 #pragma region LeaderMethods
 void LeaderSendProblem(int* arcs, int firstIndex, int secondIndex, int numberOfNodes, int* currentTask, int destination)
 {
@@ -18,9 +30,23 @@ void LeaderSendProblem(int* arcs, int firstIndex, int secondIndex, int numberOfN
 	MPI_Send(&secondIndex, 1                , MPI_INT   , destination, 4, MPI_COMM_WORLD);
 }
 
-void LeaderRecieveResult(int* result, MPI_Status* status)
+void LeaderRecieveResult(bool* isSolved, MPI_Status* status, int numberOfNodes)
 {
-	MPI_Recv(result, 1, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, status);
+	int taskNumberForResult;
+	int* solution = new int[numberOfNodes];
+
+	MPI_Recv(&taskNumberForResult, 1, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, status);
+	MPI_Recv(&isSolved[taskNumberForResult], 1, MPI_C_BOOL, status->MPI_SOURCE, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+	printf("Recieved result %d from rank %d solving problem %d\n", isSolved[taskNumberForResult], status->MPI_SOURCE, taskNumberForResult);
+
+	if (!isSolved[taskNumberForResult]) return;
+
+	MPI_Recv(solution, numberOfNodes, MPI_INT, status->MPI_SOURCE, 2, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+	for (int i = 0; i < numberOfNodes; i++)
+		printf("%d ", solution[i]);
+	printf("\n");
 }
 
 void LeaderSendOutInitialProblems(int* arcs, int firstIndex, int secondIndex, int numberOfNodes, int* currentTask, int* pendingTasks, int* sentTasks, int worldSize)
@@ -35,11 +61,12 @@ void LeaderSendOutInitialProblems(int* arcs, int firstIndex, int secondIndex, in
 
 void LeaderSendOutNewTasksWhenRequestedUntilTheWorkIsDone(int* arcs, int firstIndex, int secondIndex, int numberOfNodes, int numberOfProblems, int* currentTask, int* pendingTasks, int* sentTasks)
 {
-	int result;
+	bool* isSolved = InitialiseIsSolvedStatus(numberOfNodes);
+
 	MPI_Status status;
 	while (true)
 	{
-		LeaderRecieveResult(&result, &status);
+		LeaderRecieveResult(isSolved, &status, numberOfNodes);
 		if (*sentTasks < numberOfProblems)
 		{
 			LeaderSendProblem(arcs, firstIndex, secondIndex, numberOfNodes, currentTask, status.MPI_SOURCE);
@@ -98,9 +125,13 @@ void HelperRecieveProblem(int* currentTask, int* currentArcs, int* firstIndex, i
 	MPI_Recv(secondIndex, 1                , MPI_INT, 0, 4, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 }
 
-void HelperSendResult(bool* result)
+void HelperSendResult(int* currentTask, bool* isSolved, int* solution, int numberOfNodes)
 {
-	MPI_Send(&result, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+	MPI_Send(currentTask, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+	MPI_Send(isSolved, 1, MPI_C_BOOL, 0, 1, MPI_COMM_WORLD);
+
+	if (*isSolved)
+		MPI_Send(solution, numberOfNodes, MPI_INT, 0, 2, MPI_COMM_WORLD);
 }
 
 bool TerminationCodeHasBeenRecieved()
@@ -113,23 +144,24 @@ bool TerminationCodeHasBeenRecieved()
 void ExecuteHelperTasks(int rank)
 {
 	int numberOfNodes = 7;
-	bool hasBeenSolved = false;
-
+	
 	int currentTask;
 	int* currentArcs = new int[numberOfNodes];
 	int firstIndex;
 	int secondIndex;
 
-	bool result = true;
+	int* solution = new int[numberOfNodes];
+	bool hasBeenSolved = false;
+	bool isSolved = false;
 
 	while (!TerminationCodeHasBeenRecieved())
 	{
 		HelperRecieveProblem(&currentTask, currentArcs, &firstIndex, &secondIndex, numberOfNodes);
 
 		printf("Rank %d solving problem %d\n", rank, currentTask);
-		Solve(firstIndex, secondIndex, currentArcs, numberOfNodes, &hasBeenSolved);
+		solution = Solve(firstIndex, secondIndex, currentArcs, numberOfNodes, &hasBeenSolved);
 
-		HelperSendResult(&result);
+		HelperSendResult(&currentTask, &hasBeenSolved, solution, numberOfNodes);
 	}
 }
 #pragma endregion
