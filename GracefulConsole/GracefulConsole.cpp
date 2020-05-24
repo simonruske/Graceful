@@ -1,10 +1,17 @@
-#include <stdlib.h>
-#include <windows.h>
+#define LOG_EXECUTION_TIME 0;
+
 #include "../Graceful/Graceful.h"
 #include "../Graceful/Reader.h"
+#include "../Graceful/Logger.h"
+#include <stdlib.h>
+#include <windows.h>
 #include "mpi.h"
 #include "stdio.h"
-#include <time.h>
+
+#if LOG_EXECUTION_TIME
+#include <chrono>
+#endif
+
 
 #pragma region Initialise
 bool* InitialiseIsSolvedStatus(int numberOfProblems)
@@ -50,15 +57,18 @@ void LeaderRecieveResult(bool* isSolved, MPI_Status* status, int* numberOfSolved
 	else
 	{
 		MPI_Recv(&isSolved[taskNumberForResult], 1, MPI_C_BOOL, status->MPI_SOURCE, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-		printf("Recieved result %d from rank %d solving problem %d\n", isSolved[taskNumberForResult], status->MPI_SOURCE, taskNumberForResult);
+
+#if DEBUG
+		LogReceiptOfResult(isSolved[taskNumberForResult], status->MPI_SOURCE, taskNumberForResult);
+#endif
+
 		if (!isSolved[taskNumberForResult]) return;
 
 		MPI_Recv(solution, numberOfNodes, MPI_INT, status->MPI_SOURCE, 2, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-		
-		for (int i = 0; i < numberOfNodes; i++)
-			printf("%d ", solution[i]);
-		printf("\n");
-		
+
+#if DEBUG
+		LogSolution(solution, numberOfNodes);
+#endif
 		(*numberOfSolvedProblems)++;
 	}	
 }
@@ -128,7 +138,6 @@ void LeaderSendOutNewTasksWhenRequestedUntilTheWorkIsDone(int* arcs, int firstIn
 				if (!isSolved[*currentTask])
 					break;
 			}
-			
 		}
 		else
 		{
@@ -137,7 +146,9 @@ void LeaderSendOutNewTasksWhenRequestedUntilTheWorkIsDone(int* arcs, int firstIn
 		if (*pendingTasks == 0)
 			break;
 	}
-	printf("Solved %d of %d problems", numberOfSolvedProblems, numberOfProblems);
+#if DEBUG
+	LogNumberOfSolvedProblems(numberOfSolvedProblems, numberOfProblems);
+#endif 
 }
 
 void LeaderSendOutTerminationRequest(int worldSize)
@@ -211,7 +222,9 @@ void ExecuteHelperTasks(int rank, int numberOfNodes)
 	{
 		HelperRecieveProblem(&currentTask, currentArcs, &firstIndex, &secondIndex, numberOfNodes);
 
-		printf("Rank %d solving problem %d, with indices %d and %d\n", rank, currentTask, firstIndex, secondIndex);
+#if DEBUG
+		LogHelperCommencingSolve(rank, currentTask, firstIndex, secondIndex);
+#endif
 		solution = Solve(firstIndex, secondIndex, currentArcs, numberOfNodes, &hasBeenSolved);
 
 		HelperSendResult(&currentTask, &hasBeenSolved, solution, numberOfNodes);
@@ -221,6 +234,10 @@ void ExecuteHelperTasks(int rank, int numberOfNodes)
 
 int main(int argc, char* argv[])
 {
+#if LOG_EXECUTION_TIME
+	auto start = std::chrono::high_resolution_clock::now();
+#endif
+
 	if (argc != 3)
 	{
 		printf("You must include the number of nodes followed by the name of the file to read the trees from\n");
@@ -245,6 +262,10 @@ int main(int argc, char* argv[])
 	{
 		ExecuteHelperTasks(rank, numberOfNodes);
 	}
-
+#if LOG_EXECUTION_TIME
+	auto stop = std::chrono::high_resolution_clock::now();
+	auto duration = std::chrono::duration_cast<std::chrono::seconds>(stop - start);
+	printf("Rank %d : Execution time in seconds %d", rank, duration.count());
+#endif 
 	MPI_Finalize();
 }

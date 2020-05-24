@@ -153,11 +153,13 @@
   <ItemGroup>
     <ClCompile Include="Graceful.cpp" />
     <ClCompile Include="Initialise.cpp" />
+    <ClCompile Include="Logger.cpp" />
     <ClCompile Include="Reader.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graceful.h" />
     <ClInclude Include="Initialise.h" />
+    <ClInclude Include="Logger.h" />
     <ClInclude Include="Reader.h" />
     <ClInclude Include="SolutionState.h" />
   </ItemGroup>
