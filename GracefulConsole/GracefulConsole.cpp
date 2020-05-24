@@ -30,48 +30,105 @@ void LeaderSendProblem(int* arcs, int firstIndex, int secondIndex, int numberOfN
 	MPI_Send(&secondIndex, 1                , MPI_INT   , destination, 4, MPI_COMM_WORLD);
 }
 
-void LeaderRecieveResult(bool* isSolved, MPI_Status* status, int numberOfNodes)
+void LeaderRecieveResult(bool* isSolved, MPI_Status* status, int* numberOfSolvedProblems, int numberOfNodes)
 {
 	int taskNumberForResult;
 	int* solution = new int[numberOfNodes];
 
 	MPI_Recv(&taskNumberForResult, 1, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, status);
-	MPI_Recv(&isSolved[taskNumberForResult], 1, MPI_C_BOOL, status->MPI_SOURCE, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+	
+	if (isSolved[taskNumberForResult])
+	{
+		bool dummy;
+		int* dummySolution = new int[numberOfNodes];
 
-	printf("Recieved result %d from rank %d solving problem %d\n", isSolved[taskNumberForResult], status->MPI_SOURCE, taskNumberForResult);
+		MPI_Recv(&dummy, 1, MPI_C_BOOL, status->MPI_SOURCE, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		if (!dummy) return;
 
-	if (!isSolved[taskNumberForResult]) return;
+		MPI_Recv(dummySolution, numberOfNodes, MPI_INT, status->MPI_SOURCE, 2, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+	}
+	else
+	{
+		MPI_Recv(&isSolved[taskNumberForResult], 1, MPI_C_BOOL, status->MPI_SOURCE, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		printf("Recieved result %d from rank %d solving problem %d\n", isSolved[taskNumberForResult], status->MPI_SOURCE, taskNumberForResult);
+		if (!isSolved[taskNumberForResult]) return;
 
-	MPI_Recv(solution, numberOfNodes, MPI_INT, status->MPI_SOURCE, 2, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-
-	for (int i = 0; i < numberOfNodes; i++)
-		printf("%d ", solution[i]);
-	printf("\n");
+		MPI_Recv(solution, numberOfNodes, MPI_INT, status->MPI_SOURCE, 2, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		
+		for (int i = 0; i < numberOfNodes; i++)
+			printf("%d ", solution[i]);
+		printf("\n");
+		
+		(*numberOfSolvedProblems)++;
+	}	
 }
 
-void LeaderSendOutInitialProblems(int* arcs, int firstIndex, int secondIndex, int numberOfNodes, int* currentTask, int* pendingTasks, int* sentTasks, int worldSize)
+void LeaderSendOutInitialProblems(int* arcs, int firstIndex, int secondIndex, int numberOfNodes, int* currentTask, int* pendingTasks, int worldSize)
 {
 	for (*currentTask = 0; *currentTask < worldSize - 1; (*currentTask)++)
 	{
 		LeaderSendProblem(arcs, firstIndex, secondIndex, numberOfNodes, currentTask, (*currentTask) + 1);
 		(*pendingTasks)++;
-		(*sentTasks)++;
 	}
 }
 
-void LeaderSendOutNewTasksWhenRequestedUntilTheWorkIsDone(int* arcs, int firstIndex, int secondIndex, int numberOfNodes, int numberOfProblems, int* currentTask, int* pendingTasks, int* sentTasks)
+bool AllProblemsAreSolved(int numberOfSolvedProblems, int numberOfProblems)
 {
-	bool* isSolved = InitialiseIsSolvedStatus(numberOfNodes);
+	return numberOfSolvedProblems >= numberOfProblems;
+}
+
+bool HaveRunOutOfPossibleSolutions(int firstIndex, int numberOfNodes)
+{
+	return (firstIndex == numberOfNodes);
+}
+
+bool LeaderFinishedSendingProblems(int numberOfSolvedProblems, int numberOfProblems, int firstIndex, int numberOfNodes)
+{
+	return AllProblemsAreSolved(numberOfSolvedProblems, numberOfProblems) || HaveRunOutOfPossibleSolutions(firstIndex, numberOfNodes);
+}
+
+void LeaderIncrementIndices(int* firstIndex, int* secondIndex, int numberOfNodes)
+{
+	(*secondIndex)++;
+	if (*firstIndex == *secondIndex) (*secondIndex)++;
+
+	if (*secondIndex == numberOfNodes)
+	{
+		*secondIndex = 0;
+		(*firstIndex)++;
+	}
+}
+
+void LeaderIncrementCurrentTask(int* currentTask, int numberOfProblems, int* firstIndex, int* secondIndex, int numberOfNodes)
+{
+	(*currentTask)++;
+	if (*currentTask == numberOfProblems)
+	{
+		(*currentTask) = 0;
+		LeaderIncrementIndices(firstIndex, secondIndex, numberOfNodes);
+	}
+}
+
+void LeaderSendOutNewTasksWhenRequestedUntilTheWorkIsDone(int* arcs, int firstIndex, int secondIndex, int numberOfNodes, int numberOfProblems, int* currentTask, int* pendingTasks)
+{
+	bool* isSolved = InitialiseIsSolvedStatus(numberOfProblems);
+	int numberOfSolvedProblems = 0;
 
 	MPI_Status status;
 	while (true)
 	{
-		LeaderRecieveResult(isSolved, &status, numberOfNodes);
-		if (*sentTasks < numberOfProblems)
+		LeaderRecieveResult(isSolved, &status, &numberOfSolvedProblems, numberOfNodes);
+		if (!LeaderFinishedSendingProblems(numberOfSolvedProblems, numberOfProblems, firstIndex, numberOfNodes))
 		{
 			LeaderSendProblem(arcs, firstIndex, secondIndex, numberOfNodes, currentTask, status.MPI_SOURCE);
-			(*currentTask)++;
-			(*sentTasks)++;
+
+			while (true)
+			{
+				LeaderIncrementCurrentTask(currentTask, numberOfProblems, &firstIndex, &secondIndex, numberOfNodes);
+				if (!isSolved[*currentTask])
+					break;
+			}
+			
 		}
 		else
 		{
@@ -80,6 +137,7 @@ void LeaderSendOutNewTasksWhenRequestedUntilTheWorkIsDone(int* arcs, int firstIn
 		if (*pendingTasks == 0)
 			break;
 	}
+	printf("Solved %d of %d problems", numberOfSolvedProblems, numberOfProblems);
 }
 
 void LeaderSendOutTerminationRequest(int worldSize)
@@ -96,9 +154,9 @@ void ExecuteLeaderTasks(int worldSize)
 	int numberOfNodes = 7;
 	int numberOfProblems = 11;
 
-	if (numberOfProblems + 1 < worldSize)
+	if (numberOfProblems < worldSize)
 	{
-		printf("The number of processes must be at most 1 more than the number of problems.");
+		printf("The number of processes must less than the number of problems.");
 		LeaderSendOutTerminationRequest(worldSize);
 		return;
 	}
@@ -107,11 +165,10 @@ void ExecuteLeaderTasks(int worldSize)
 	int* arcs = ReadProblems(filename, 7);
 
 	int pendingTasks = 0;
-	int sentTasks = 0;
 	int currentTask = 0;
 
-	LeaderSendOutInitialProblems(arcs, 0, 1, numberOfNodes, &currentTask, &pendingTasks, &sentTasks, worldSize);
-	LeaderSendOutNewTasksWhenRequestedUntilTheWorkIsDone(arcs, 0, 1, numberOfNodes, numberOfProblems, &currentTask, &pendingTasks, &sentTasks);
+	LeaderSendOutInitialProblems(arcs, 0, 1, numberOfNodes, &currentTask, &pendingTasks, worldSize);
+	LeaderSendOutNewTasksWhenRequestedUntilTheWorkIsDone(arcs, 0, 1, numberOfNodes, numberOfProblems, &currentTask, &pendingTasks);
 	LeaderSendOutTerminationRequest(worldSize);
 }
 #pragma endregion
@@ -158,7 +215,7 @@ void ExecuteHelperTasks(int rank)
 	{
 		HelperRecieveProblem(&currentTask, currentArcs, &firstIndex, &secondIndex, numberOfNodes);
 
-		printf("Rank %d solving problem %d\n", rank, currentTask);
+		printf("Rank %d solving problem %d, with indices %d and %d\n", rank, currentTask, firstIndex, secondIndex);
 		solution = Solve(firstIndex, secondIndex, currentArcs, numberOfNodes, &hasBeenSolved);
 
 		HelperSendResult(&currentTask, &hasBeenSolved, solution, numberOfNodes);
