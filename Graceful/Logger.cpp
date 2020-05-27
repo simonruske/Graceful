@@ -1,10 +1,28 @@
 #include "stdio.h"
+#include "string"
+#include "time.h"
 
 void LogSolution(int* solution, int numberOfNodes)
 {
 	for (int i = 0; i < numberOfNodes; i++)
 		printf("%d ", solution[i]);
 	printf("\n");
+}
+
+void LogSolutionToFile(int currentTask, int* solution, int numberOfNodes)
+{
+	FILE* solutionsFile;
+	char outputFileName[32];
+	sprintf_s(outputFileName, "..\\Logs\\solutions_%d.txt", numberOfNodes);
+	fopen_s(&solutionsFile, outputFileName, "a");
+	
+	fprintf(solutionsFile, "%d,", currentTask);
+
+	for (int i = 0; i < numberOfNodes - 1; i++)
+		fprintf(solutionsFile, "%d,", solution[i]);
+	fprintf(solutionsFile, "%d\n", solution[numberOfNodes - 1]);
+
+	fclose(solutionsFile);
 }
 
 void LogReceiptOfResult(bool isSolved, int source, int taskNumber)
@@ -15,6 +33,52 @@ void LogReceiptOfResult(bool isSolved, int source, int taskNumber)
 void LogNumberOfSolvedProblems(int numberOfSolvedProblems, int numberOfProblems)
 {
 	printf("Solved %d of %d problems\n", numberOfSolvedProblems, numberOfProblems);
+}
+
+void LogNumberOfSolvedProblemsToFile(int currentTask, int numberOfSolvedProblems, int numberOfProblems, int numberOfNodes)
+{
+	FILE* statusFile;
+
+	char statusFileName[32];
+	sprintf_s(statusFileName, "..\\Logs\\status_%d.txt", numberOfNodes);
+
+	fopen_s(&statusFile, statusFileName, "a");
+
+	time_t rawtime;
+	struct tm timeinfo;
+
+	time(&rawtime);
+	localtime_s(&timeinfo, &rawtime);
+
+	char timeString[32];
+	asctime_s(timeString, &timeinfo);
+	str:
+
+
+	fprintf(statusFile, "Solved problem %d, %d of %d problems %s", currentTask, numberOfSolvedProblems, numberOfProblems, timeString);
+	fclose(statusFile);
+}
+
+void LogCurrentIndicesToFile(int firstIndex, int secondIndex, int numberOfNodes)
+{
+	FILE* statusFile;
+	
+	char statusFileName[32];
+	sprintf_s(statusFileName, "..\\Logs\\status_%d.txt", numberOfNodes);
+
+	fopen_s(&statusFile, statusFileName, "a");
+
+	time_t rawtime;
+	struct tm timeinfo;
+
+	time(&rawtime);
+	localtime_s(&timeinfo, &rawtime);
+
+	char timeString[32];
+	asctime_s(timeString, &timeinfo);
+
+	fprintf(statusFile, "Indices have incremented to %d and %d %s", firstIndex, secondIndex, timeString);
+	fclose(statusFile);
 }
 
 void LogHelperCommencingSolve(int rank, int currentTask, int firstIndex, int secondIndex)

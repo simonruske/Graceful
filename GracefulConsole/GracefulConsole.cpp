@@ -1,4 +1,4 @@
-#define LOG_EXECUTION_TIME 0;
+#define LOG_EXECUTION_TIME 1;
 
 #include "../Graceful/Graceful.h"
 #include "../Graceful/Reader.h"
@@ -37,7 +37,7 @@ void LeaderSendProblem(int* arcs, int firstIndex, int secondIndex, int numberOfN
 	MPI_Send(&secondIndex, 1                , MPI_INT   , destination, 4, MPI_COMM_WORLD);
 }
 
-void LeaderRecieveResult(bool* isSolved, MPI_Status* status, int* numberOfSolvedProblems, int numberOfNodes)
+void LeaderRecieveResult(bool* isSolved, MPI_Status* status, int* numberOfSolvedProblems, int numberOfNodes, int numberOfProblems)
 {
 	int taskNumberForResult;
 	int* solution = new int[numberOfNodes];
@@ -66,10 +66,17 @@ void LeaderRecieveResult(bool* isSolved, MPI_Status* status, int* numberOfSolved
 
 		MPI_Recv(solution, numberOfNodes, MPI_INT, status->MPI_SOURCE, 2, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
+		(*numberOfSolvedProblems)++;
+
 #if DEBUG
 		LogSolution(solution, numberOfNodes);
+		LogNumberOfSolvedProblems(*numberOfSolvedProblems, numberOfProblems);
+#else
+		LogSolutionToFile(taskNumberForResult, solution, numberOfNodes);
+		LogNumberOfSolvedProblemsToFile(taskNumberForResult, *numberOfSolvedProblems, numberOfProblems, numberOfNodes);
 #endif
-		(*numberOfSolvedProblems)++;
+		
+
 	}	
 }
 
@@ -107,6 +114,7 @@ void LeaderIncrementIndices(int* firstIndex, int* secondIndex, int numberOfNodes
 		*secondIndex = 0;
 		(*firstIndex)++;
 	}
+	LogCurrentIndicesToFile(*firstIndex, *secondIndex, numberOfNodes);
 }
 
 void LeaderIncrementCurrentTask(int* currentTask, int numberOfProblems, int* firstIndex, int* secondIndex, int numberOfNodes)
@@ -127,7 +135,7 @@ void LeaderSendOutNewTasksWhenRequestedUntilTheWorkIsDone(int* arcs, int firstIn
 	MPI_Status status;
 	while (true)
 	{
-		LeaderRecieveResult(isSolved, &status, &numberOfSolvedProblems, numberOfNodes);
+		LeaderRecieveResult(isSolved, &status, &numberOfSolvedProblems, numberOfNodes, numberOfProblems);
 		if (!LeaderFinishedSendingProblems(numberOfSolvedProblems, numberOfProblems, firstIndex, numberOfNodes))
 		{
 			LeaderSendProblem(arcs, firstIndex, secondIndex, numberOfNodes, currentTask, status.MPI_SOURCE);
