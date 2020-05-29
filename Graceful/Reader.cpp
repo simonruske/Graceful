@@ -51,3 +51,71 @@ int* ReadProblems(char* filename, int numberOfNodes, int numberOfProblems)
 
 	return result;
 }
+
+void ReadCurrentStatus(int rank, int numberOfNodes, int* currentTask, int* firstIndex, int* secondIndex)
+{
+	FILE* statusFile;
+
+	char statusFileName[32];
+	sprintf_s(statusFileName, "..\\Logs\\status_%d_%d.txt", numberOfNodes, rank);
+
+	fopen_s(&statusFile, statusFileName, "r");
+
+	fscanf_s(statusFile, "%d", currentTask);
+	fscanf_s(statusFile, "%d", firstIndex); 
+	fscanf_s(statusFile, "%d", secondIndex);
+	fclose(statusFile);
+}
+
+bool AllStatusFilesExist(int worldSize, int numberOfNodes) 
+{
+	char statusFileName[32];
+	for (int rank = 1; rank < worldSize; rank++)
+	{
+		sprintf_s(statusFileName, "..\\Logs\\status_%d_%d.txt", numberOfNodes, rank);
+
+		FILE* statusFile;
+		int successful = fopen_s(&statusFile, statusFileName, "r");
+
+		if (successful == 0) 
+		{
+			fclose(statusFile);
+		}
+		else 
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+bool* InitialiseIsSolvedStatusFromFile(int numberOfNodes, int numberOfProblems)
+{
+	FILE* statusFile;
+
+	char statusFileName[32];
+	sprintf_s(statusFileName, "..\\Logs\\status_%d.txt", numberOfNodes);
+
+	fopen_s(&statusFile, statusFileName, "r");
+
+	bool* isSolved = new bool[numberOfProblems];
+
+	for (int i = 0; i < numberOfProblems; i++)
+	{
+		isSolved[i] = false;
+	}
+
+	char buffer[128];
+	int currentIsSolved;
+	while (fgets(buffer, 128, statusFile))
+	{
+		int stat = sscanf_s(buffer, "Solved problem %d", &currentIsSolved);
+		if (stat == 1)
+		{
+			isSolved[currentIsSolved] = true;
+		}
+	}
+	fclose(statusFile);
+
+	return isSolved;
+}

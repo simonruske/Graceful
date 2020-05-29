@@ -49,5 +49,38 @@ namespace GracefulUnitTests
 			for (int i = 0; i < 66; i++)
 				Assert::AreEqual(expectedResult[i], actualResult[i]);
 		}
+
+		TEST_METHOD(ReaderTest_InitialiseIsSolvedStatusFromFile_TestFile_ReturnsCorrectResult)
+		{
+			//Arrange
+			FILE* statusFile;
+			fopen_s(&statusFile, "..\\Logs\\status_0.txt", "w");
+			fprintf_s(statusFile, "Solved problem 63, 1 of 7741 problems Mon May 25 09:42:18 2020\n");
+			fprintf_s(statusFile, "Solved problem 65, 2 of 7741 problems Mon May 25 09:42:18 2020\n");
+			fprintf_s(statusFile, "Indices have incremented to 0 and 2 Mon May 25 09:33:14 2020\n");
+			fprintf_s(statusFile, "Solved problem 90, 3 of 7741 problems Mon May 25 09:42:19 2020\n");
+			fclose(statusFile);
+
+			int numberOfProblems = 7741;
+			int numberOfNodes = 0;
+			
+			//Act
+			bool* actualIsSolved = InitialiseIsSolvedStatusFromFile(numberOfNodes, numberOfProblems);
+
+			//Assert
+			for (int i = 0; i < numberOfProblems; i++)
+			{
+				if (i == 63 || i == 65 || i == 90)
+				{
+					Assert::AreEqual(true, actualIsSolved[i]);
+				}
+				else
+				{
+					Assert::AreEqual(false, actualIsSolved[i]);
+				}
+			}
+
+			remove("..\\Logs\\status_0.txt");
+		}
 	};
 }

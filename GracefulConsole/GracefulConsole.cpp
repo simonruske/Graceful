@@ -28,6 +28,8 @@ bool* InitialiseIsSolvedStatus(int numberOfProblems)
 #pragma region LeaderMethods
 void LeaderSendProblem(int* arcs, int firstIndex, int secondIndex, int numberOfNodes, int* currentTask, int destination)
 {
+	LogSendingOfProblemToProcess(firstIndex, secondIndex, numberOfNodes, *currentTask, destination);
+
 	bool terminate = false;
 	int* currentArcs = &arcs[*currentTask * (numberOfNodes - 1)];
 	MPI_Send(&terminate  , 1                , MPI_C_BOOL, destination, 0, MPI_COMM_WORLD);
@@ -89,6 +91,18 @@ void LeaderSendOutInitialProblems(int* arcs, int firstIndex, int secondIndex, in
 	}
 }
 
+void LeaderSendOutInitialProblemsUsingStatusFile(int* arcs, int* firstIndex, int* secondIndex, int numberOfNodes, int* currentTask, int* pendingTasks, int worldSize)
+{
+	int currentRankTask;
+	for (int rank = 1; rank < worldSize; rank++)
+	{
+		ReadCurrentStatus(rank, numberOfNodes, &currentRankTask, firstIndex, secondIndex);
+		LeaderSendProblem(arcs, *firstIndex, *secondIndex, numberOfNodes, &currentRankTask, rank);
+		(*pendingTasks)++;
+		*currentTask = max(currentRankTask, *currentTask);
+	}
+}
+
 bool AllProblemsAreSolved(int numberOfSolvedProblems, int numberOfProblems)
 {
 	return numberOfSolvedProblems >= numberOfProblems;
@@ -127,10 +141,12 @@ void LeaderIncrementCurrentTask(int* currentTask, int numberOfProblems, int* fir
 	}
 }
 
-void LeaderSendOutNewTasksWhenRequestedUntilTheWorkIsDone(int* arcs, int firstIndex, int secondIndex, int numberOfNodes, int numberOfProblems, int* currentTask, int* pendingTasks)
+void LeaderSendOutNewTasksWhenRequestedUntilTheWorkIsDone(int* arcs, int firstIndex, int secondIndex, int numberOfNodes, int numberOfProblems, int* currentTask, int* pendingTasks, bool* isSolved)
 {
-	bool* isSolved = InitialiseIsSolvedStatus(numberOfProblems);
 	int numberOfSolvedProblems = 0;
+	for (int i = 0; i < numberOfProblems; i++)
+		if (isSolved[i] == true)
+			numberOfSolvedProblems++;
 
 	MPI_Status status;
 	while (true)
@@ -144,7 +160,7 @@ void LeaderSendOutNewTasksWhenRequestedUntilTheWorkIsDone(int* arcs, int firstIn
 			{
 				LeaderIncrementCurrentTask(currentTask, numberOfProblems, &firstIndex, &secondIndex, numberOfNodes);
 				if (!isSolved[*currentTask])
-					break;
+					break;	
 			}
 		}
 		else
@@ -175,18 +191,32 @@ void ExecuteLeaderTasks(int worldSize, int numberOfNodes, char* filename)
 	if (numberOfProblems < worldSize)
 	{
 		printf("The number of processes must less than the number of problems.");
-		LeaderSendOutTerminationRequest(worldSize);
+		MPI_Abort(MPI_COMM_WORLD, 0);
 		return;
 	}
 
 	int* arcs = ReadProblems(filename, numberOfNodes, numberOfProblems);
+	bool* isSolved;
 
 	int pendingTasks = 0;
 	int currentTask = 0;
 
-	LeaderSendOutInitialProblems(arcs, 0, 1, numberOfNodes, &currentTask, &pendingTasks, worldSize);
-	LeaderSendOutNewTasksWhenRequestedUntilTheWorkIsDone(arcs, 0, 1, numberOfNodes, numberOfProblems, &currentTask, &pendingTasks);
-	LeaderSendOutTerminationRequest(worldSize);
+	int firstIndex = 0;
+	int secondIndex = 1;
+
+	if (AllStatusFilesExist(worldSize, numberOfNodes))
+	{
+		LeaderSendOutInitialProblemsUsingStatusFile(arcs, &firstIndex, &secondIndex, numberOfNodes, &currentTask, &pendingTasks, worldSize);
+		isSolved = InitialiseIsSolvedStatusFromFile(numberOfNodes, numberOfProblems);
+	}
+	else
+	{
+		LeaderSendOutInitialProblems(arcs, firstIndex, secondIndex, numberOfNodes, &currentTask, &pendingTasks, worldSize);
+		isSolved = InitialiseIsSolvedStatus(numberOfProblems);
+	}
+	
+	LeaderSendOutNewTasksWhenRequestedUntilTheWorkIsDone(arcs, firstIndex, secondIndex, numberOfNodes, numberOfProblems, &currentTask, &pendingTasks, isSolved);
+	MPI_Abort(MPI_COMM_WORLD, 0);
 }
 #pragma endregion
 

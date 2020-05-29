@@ -35,6 +35,19 @@ void LogNumberOfSolvedProblems(int numberOfSolvedProblems, int numberOfProblems)
 	printf("Solved %d of %d problems\n", numberOfSolvedProblems, numberOfProblems);
 }
 
+void LogSendingOfProblemToProcess(int firstIndex, int secondIndex, int numberOfNodes, int currentTask, int destination)
+{
+	FILE* statusFile;
+
+	char statusFileName[32];
+	sprintf_s(statusFileName, "..\\Logs\\status_%d_%d.txt", numberOfNodes, destination);
+
+	fopen_s(&statusFile, statusFileName, "w");
+
+	fprintf(statusFile, "%d %d %d", currentTask, firstIndex, secondIndex);
+	fclose(statusFile);
+}
+
 void LogNumberOfSolvedProblemsToFile(int currentTask, int numberOfSolvedProblems, int numberOfProblems, int numberOfNodes)
 {
 	FILE* statusFile;
@@ -53,7 +66,6 @@ void LogNumberOfSolvedProblemsToFile(int currentTask, int numberOfSolvedProblems
 	char timeString[32];
 	asctime_s(timeString, &timeinfo);
 	str:
-
 
 	fprintf(statusFile, "Solved problem %d, %d of %d problems %s", currentTask, numberOfSolvedProblems, numberOfProblems, timeString);
 	fclose(statusFile);
