@@ -13,8 +13,9 @@ void LogSolutionToFile(int currentTask, int* solution, int numberOfNodes)
 {
 	FILE* solutionsFile;
 	char outputFileName[32];
-	sprintf_s(outputFileName, "..\\Logs\\solutions_%d.txt", numberOfNodes);
-	fopen_s(&solutionsFile, outputFileName, "a");
+	sprintf(outputFileName, "./Logs/solutions_%d.txt", numberOfNodes);
+	
+	solutionsFile = fopen(outputFileName, "a");
 	
 	fprintf(solutionsFile, "%d,", currentTask);
 
@@ -40,9 +41,9 @@ void LogSendingOfProblemToProcess(int firstIndex, int secondIndex, int numberOfN
 	FILE* statusFile;
 
 	char statusFileName[32];
-	sprintf_s(statusFileName, "..\\Logs\\status_%d_%d.txt", numberOfNodes, destination);
+	sprintf(statusFileName, "./Logs/status_%d_%d.txt", numberOfNodes, destination);
 
-	fopen_s(&statusFile, statusFileName, "w");
+	statusFile = fopen(statusFileName, "w");
 
 	fprintf(statusFile, "%d %d %d", currentTask, firstIndex, secondIndex);
 	fclose(statusFile);
@@ -53,19 +54,18 @@ void LogNumberOfSolvedProblemsToFile(int currentTask, int numberOfSolvedProblems
 	FILE* statusFile;
 
 	char statusFileName[32];
-	sprintf_s(statusFileName, "..\\Logs\\status_%d.txt", numberOfNodes);
+	sprintf(statusFileName, "./Logs/status_%d.txt", numberOfNodes);
 
-	fopen_s(&statusFile, statusFileName, "a");
+	statusFile = fopen(statusFileName, "a");
 
 	time_t rawtime;
-	struct tm timeinfo;
+	struct tm* timeinfo;
 
 	time(&rawtime);
-	localtime_s(&timeinfo, &rawtime);
+	timeinfo = localtime(&rawtime);
 
-	char timeString[32];
-	asctime_s(timeString, &timeinfo);
-	str:
+	char* timeString;
+	timeString = asctime(timeinfo);
 
 	fprintf(statusFile, "Solved problem %d, %d of %d problems %s", currentTask, numberOfSolvedProblems, numberOfProblems, timeString);
 	fclose(statusFile);
@@ -76,18 +76,18 @@ void LogCurrentIndicesToFile(int firstIndex, int secondIndex, int numberOfNodes)
 	FILE* statusFile;
 	
 	char statusFileName[32];
-	sprintf_s(statusFileName, "..\\Logs\\status_%d.txt", numberOfNodes);
+	sprintf(statusFileName, "./Logs/status_%d.txt", numberOfNodes);
 
-	fopen_s(&statusFile, statusFileName, "a");
+	statusFile = fopen(statusFileName, "a");
 
 	time_t rawtime;
-	struct tm timeinfo;
+	struct tm* timeinfo;
 
 	time(&rawtime);
-	localtime_s(&timeinfo, &rawtime);
+	timeinfo = localtime(&rawtime);
 
-	char timeString[32];
-	asctime_s(timeString, &timeinfo);
+	char* timeString;
+	timeString = asctime(timeinfo);
 
 	fprintf(statusFile, "Indices have incremented to %d and %d %s", firstIndex, secondIndex, timeString);
 	fclose(statusFile);

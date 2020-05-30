@@ -1,17 +1,11 @@
-#define LOG_EXECUTION_TIME 1;
-
 #include "../Graceful/Graceful.h"
 #include "../Graceful/Reader.h"
 #include "../Graceful/Logger.h"
 #include <stdlib.h>
-#include <windows.h>
+#include <algorithm>
+#include <chrono>
 #include "mpi.h"
 #include "stdio.h"
-
-#if LOG_EXECUTION_TIME
-#include <chrono>
-#endif
-
 
 #pragma region Initialise
 bool* InitialiseIsSolvedStatus(int numberOfProblems)
@@ -99,7 +93,7 @@ void LeaderSendOutInitialProblemsUsingStatusFile(int* arcs, int* firstIndex, int
 		ReadCurrentStatus(rank, numberOfNodes, &currentRankTask, firstIndex, secondIndex);
 		LeaderSendProblem(arcs, *firstIndex, *secondIndex, numberOfNodes, &currentRankTask, rank);
 		(*pendingTasks)++;
-		*currentTask = max(currentRankTask, *currentTask);
+		*currentTask = std::max(currentRankTask, *currentTask);
 	}
 }
 
@@ -191,7 +185,7 @@ void ExecuteLeaderTasks(int worldSize, int numberOfNodes, char* filename)
 	if (numberOfProblems < worldSize)
 	{
 		printf("The number of processes must less than the number of problems.");
-		MPI_Abort(MPI_COMM_WORLD, 0);
+		LeaderSendOutTerminationRequest(worldSize);
 		return;
 	}
 
@@ -216,7 +210,7 @@ void ExecuteLeaderTasks(int worldSize, int numberOfNodes, char* filename)
 	}
 	
 	LeaderSendOutNewTasksWhenRequestedUntilTheWorkIsDone(arcs, firstIndex, secondIndex, numberOfNodes, numberOfProblems, &currentTask, &pendingTasks, isSolved);
-	MPI_Abort(MPI_COMM_WORLD, 0);
+	LeaderSendOutTerminationRequest(worldSize);
 }
 #pragma endregion
 
@@ -272,9 +266,7 @@ void ExecuteHelperTasks(int rank, int numberOfNodes)
 
 int main(int argc, char* argv[])
 {
-#if LOG_EXECUTION_TIME
 	auto start = std::chrono::high_resolution_clock::now();
-#endif
 
 	if (argc != 3)
 	{
@@ -300,10 +292,10 @@ int main(int argc, char* argv[])
 	{
 		ExecuteHelperTasks(rank, numberOfNodes);
 	}
-#if LOG_EXECUTION_TIME
+
 	auto stop = std::chrono::high_resolution_clock::now();
 	auto duration = std::chrono::duration_cast<std::chrono::seconds>(stop - start);
-	printf("Rank %d : Execution time in seconds %d", rank, duration.count());
-#endif 
+	printf("Rank %d : Execution time in seconds %d\n", rank, duration.count());
+	
 	MPI_Finalize();
 }

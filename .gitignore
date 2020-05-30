@@ -351,3 +351,4 @@ MigrationBackup/
 
 # Additional ignores not related to visual studio
 Trees/
+Logs

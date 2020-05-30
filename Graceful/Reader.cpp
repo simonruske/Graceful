@@ -20,7 +20,7 @@ int ReadNumberOfProblems(char* filename)
 
 	if (numberOfProblems == 0)
 	{
-		throw std::exception("Was unable to read file.");
+		throw std::runtime_error("Was unable to read file.");
 	}
 
 	return numberOfProblems;
@@ -57,13 +57,13 @@ void ReadCurrentStatus(int rank, int numberOfNodes, int* currentTask, int* first
 	FILE* statusFile;
 
 	char statusFileName[32];
-	sprintf_s(statusFileName, "..\\Logs\\status_%d_%d.txt", numberOfNodes, rank);
+	sprintf(statusFileName, "./Logs/status_%d_%d.txt", numberOfNodes, rank);
 
-	fopen_s(&statusFile, statusFileName, "r");
+	statusFile = fopen(statusFileName, "r");
 
-	fscanf_s(statusFile, "%d", currentTask);
-	fscanf_s(statusFile, "%d", firstIndex); 
-	fscanf_s(statusFile, "%d", secondIndex);
+	fscanf(statusFile, "%d", currentTask);
+	fscanf(statusFile, "%d", firstIndex); 
+	fscanf(statusFile, "%d", secondIndex);
 	fclose(statusFile);
 }
 
@@ -72,12 +72,11 @@ bool AllStatusFilesExist(int worldSize, int numberOfNodes)
 	char statusFileName[32];
 	for (int rank = 1; rank < worldSize; rank++)
 	{
-		sprintf_s(statusFileName, "..\\Logs\\status_%d_%d.txt", numberOfNodes, rank);
+		sprintf(statusFileName, "./Log/status_%d_%d.txt", numberOfNodes, rank);
 
-		FILE* statusFile;
-		int successful = fopen_s(&statusFile, statusFileName, "r");
+		FILE* statusFile = fopen(statusFileName, "r");
 
-		if (successful == 0) 
+		if (statusFile != NULL) 
 		{
 			fclose(statusFile);
 		}
@@ -94,9 +93,9 @@ bool* InitialiseIsSolvedStatusFromFile(int numberOfNodes, int numberOfProblems)
 	FILE* statusFile;
 
 	char statusFileName[32];
-	sprintf_s(statusFileName, "..\\Logs\\status_%d.txt", numberOfNodes);
+	sprintf(statusFileName, "./Logs/status_%d.txt", numberOfNodes);
 
-	fopen_s(&statusFile, statusFileName, "r");
+	statusFile = fopen(statusFileName, "r");
 
 	bool* isSolved = new bool[numberOfProblems];
 
@@ -109,7 +108,7 @@ bool* InitialiseIsSolvedStatusFromFile(int numberOfNodes, int numberOfProblems)
 	int currentIsSolved;
 	while (fgets(buffer, 128, statusFile))
 	{
-		int stat = sscanf_s(buffer, "Solved problem %d", &currentIsSolved);
+		int stat = sscanf(buffer, "Solved problem %d", &currentIsSolved);
 		if (stat == 1)
 		{
 			isSolved[currentIsSolved] = true;
