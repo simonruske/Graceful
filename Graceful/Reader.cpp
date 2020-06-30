@@ -72,7 +72,7 @@ bool AllStatusFilesExist(int worldSize, int numberOfNodes)
 	char statusFileName[32];
 	for (int rank = 1; rank < worldSize; rank++)
 	{
-		sprintf(statusFileName, "./Log/status_%d_%d.txt", numberOfNodes, rank);
+		sprintf(statusFileName, "./Logs/status_%d_%d.txt", numberOfNodes, rank);
 
 		FILE* statusFile = fopen(statusFileName, "r");
 
