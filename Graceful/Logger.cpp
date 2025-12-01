@@ -14,7 +14,12 @@ void LogSolutionToFile(int currentTask, int* solution, int numberOfNodes)
 	FILE* solutionsFile;
 	char outputFileName[32];
 	sprintf_s(outputFileName, "..\\Logs\\solutions_%d.txt", numberOfNodes);
-	fopen_s(&solutionsFile, outputFileName, "a");
+	errno_t errorNumber = fopen_s(&solutionsFile, outputFileName, "a");
+
+	if (errorNumber != 0 || solutionsFile == nullptr)
+	{
+		return;
+	}
 	
 	fprintf(solutionsFile, "%d,", currentTask);
 
@@ -42,7 +47,12 @@ void LogSendingOfProblemToProcess(int firstIndex, int secondIndex, int numberOfN
 	char statusFileName[32];
 	sprintf_s(statusFileName, "..\\Logs\\status_%d_%d.txt", numberOfNodes, destination);
 
-	fopen_s(&statusFile, statusFileName, "w");
+	errno_t errorNumber = fopen_s(&statusFile, statusFileName, "w");
+
+	if (errorNumber != 0 || statusFile == nullptr)
+	{
+		return;
+	}
 
 	fprintf(statusFile, "%d %d %d", currentTask, firstIndex, secondIndex);
 	fclose(statusFile);
@@ -55,7 +65,12 @@ void LogNumberOfSolvedProblemsToFile(int currentTask, int numberOfSolvedProblems
 	char statusFileName[32];
 	sprintf_s(statusFileName, "..\\Logs\\status_%d.txt", numberOfNodes);
 
-	fopen_s(&statusFile, statusFileName, "a");
+	errno_t errorNumber = fopen_s(&statusFile, statusFileName, "a");
+
+	if (errorNumber != 0 || statusFile == nullptr)
+	{
+		return;
+	}
 
 	time_t rawtime;
 	struct tm timeinfo;
@@ -78,7 +93,12 @@ void LogCurrentIndicesToFile(int firstIndex, int secondIndex, int numberOfNodes)
 	char statusFileName[32];
 	sprintf_s(statusFileName, "..\\Logs\\status_%d.txt", numberOfNodes);
 
-	fopen_s(&statusFile, statusFileName, "a");
+	errno_t errorNumber = fopen_s(&statusFile, statusFileName, "a");
+
+	if (errorNumber != 0 || statusFile == nullptr)
+	{
+		return;
+	}
 
 	time_t rawtime;
 	struct tm timeinfo;

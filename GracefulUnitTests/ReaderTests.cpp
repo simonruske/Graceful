@@ -2,6 +2,8 @@
 #include "CppUnitTest.h"
 #include "..\Graceful\Reader.h"
 #include <algorithm>
+#include <windows.h>
+#include <direct.h>  // for _mkdir
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
@@ -13,7 +15,7 @@ namespace GracefulUnitTests
 		TEST_METHOD(ReaderTests_ReadNumberOfProblems_TestFile_Returns11)
 		{
 			//Act
-			int numberOfProblems = ReadNumberOfProblems("..\\TestFiles\\trees_7.csv");
+			int numberOfProblems = ReadNumberOfProblems("..\\..\\TestFiles\\trees_7.csv");
 
 			//Assert
 			Assert::AreEqual(11, numberOfProblems);
@@ -28,7 +30,7 @@ namespace GracefulUnitTests
 		TEST_METHOD(ReaderTest_ReadProblems_TestFile_ReturnsCorrectResult)
 		{
 			//Act
-			int* actualResult = ReadProblems("..\\TestFiles\\trees_7.csv", 7, 11);
+			int* actualResult = ReadProblems("..\\..\\TestFiles\\trees_7.csv", 7, 11);
 
 			//Assert
 			int* expectedResult = new int[66]
@@ -53,8 +55,16 @@ namespace GracefulUnitTests
 		TEST_METHOD(ReaderTest_InitialiseIsSolvedStatusFromFile_TestFile_ReturnsCorrectResult)
 		{
 			//Arrange
+			int directoryErrorNumber = _mkdir("..\\Logs");
+
 			FILE* statusFile;
-			fopen_s(&statusFile, "..\\Logs\\status_0.txt", "w");
+			errno_t errorNumber = fopen_s(&statusFile, "..\\Logs\\status_0.txt", "w");
+
+			if (errorNumber != 0 || statusFile == nullptr)
+			{
+				Assert::Fail(L"Could not create the status file");
+			}
+
 			fprintf_s(statusFile, "Solved problem 63, 1 of 7741 problems Mon May 25 09:42:18 2020\n");
 			fprintf_s(statusFile, "Solved problem 65, 2 of 7741 problems Mon May 25 09:42:18 2020\n");
 			fprintf_s(statusFile, "Indices have incremented to 0 and 2 Mon May 25 09:33:14 2020\n");
